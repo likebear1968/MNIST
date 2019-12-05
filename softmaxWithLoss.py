@@ -23,7 +23,6 @@ class SoftmaxWithLoss:
         if t.ndim == 1:
             t = t.reshape(1, t.size)
         if t.size == y.size:
-            # 教師ラベルがone-hotベクトルの場合、正解のインデックスに変換
             t = t.argmax(axis=1)
         return -np.sum(np.log(y[np.arange(y.shape[0]), t] + self.delta)) / y.shape[0]
 
@@ -31,7 +30,6 @@ class SoftmaxWithLoss:
         self.t = t
         self.y = self.softmax(x)
         if self.t.size == self.y.size:
-            # 教師ラベルがone-hotベクトルの場合、正解のインデックスに変換
             self.t = self.t.argmax(axis=1)
         return self.cross_entropy_error(self.y, self.t)
 
