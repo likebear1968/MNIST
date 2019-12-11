@@ -18,6 +18,23 @@ class Factory():
         return None
 
 class Metrics(metaclass=ABCMeta):
+    def __init__(self):
+        self.init_metrics()
+
+    def init_metrics(self):
+        self.loss = []
+        self.obs = []
+        self.prd = []
+
+    def add_metrics(self, loss, obs, prd):
+        self.loss.extend(np.array([loss]).flatten())
+        self.obs.extend(np.array([obs]).flatten())
+        self.prd.extend(np.array([prd]).flatten())
+
+    @abstractmethod
+    def get_metrics(self, reset=True):
+        pass
+
     @abstractmethod
     def evaluate(self, obs, prd):
         '''
@@ -29,19 +46,59 @@ class Metrics(metaclass=ABCMeta):
         pass
 
 class R2(Metrics):
+    def __init__(self):
+        super().__init__()
+
     def evaluate(self, obs, prd):
-        return 1 - np.sum((obs - prd) ** 2) / np.sum((obs - np.mean(obs)) ** 2)
+        obs = np.array(obs)
+        prd = np.array(prd)
+        denom = np.sum((obs - np.mean(obs)) ** 2)
+        if denom == 0:
+            denom = 1
+        return 1 - np.sum((obs - prd) ** 2) / denom
+
+    def get_metrics(self, reset=True):
+        m = self.evaluate(self.obs, self.prd)
+        l = np.average(self.loss)
+        if reset:
+            self.init_metrics()
+        print('loss %.2f | r2 %.4f' %(l, m))
 
 class MSE(Metrics):
+    def __init__(self):
+        super().__init__()
+
     def evaluate(self, obs, prd):
+        obs = np.array(obs)
+        prd = np.array(prd)
         return np.average((obs - prd) ** 2, axis=0)
 
+    def get_metrics(self, reset=True):
+        m = self.evaluate(self.obs, self.prd)
+        l = np.average(self.loss)
+        if reset:
+            self.init_metrics()
+        print('loss %.2f | mse %.4f' %(l, m))
+
 class MAE(Metrics):
+    def __init__(self):
+        super().__init__()
+
     def evaluate(self, obs, prd):
+        obs = np.array(obs)
+        prd = np.array(prd)
         return np.average(np.abs(prd - obs), axis=0)
+
+    def get_metrics(self, reset=True):
+        m = self.evaluate(self.obs, self.prd)
+        l = np.average(self.loss)
+        if reset:
+            self.init_metrics()
+        print('loss %.2f | mae %.4f' %(l, m))
 
 class Confusion_matrix(Metrics):
     def __init__(self, lbl=[0,1]):
+        super().__init__()
         self.lbl = lbl
         self.s = len(self.lbl)
         self.delta = 1e-7
@@ -50,25 +107,32 @@ class Confusion_matrix(Metrics):
         mtr = self.get_matrix(obs, prd)
         return self.accuracy(None, None, mtr), self.precision(None, None, mtr), self.recall(None, None, mtr), self.f1(None, None, mtr)
 
+    def get_metrics(self, reset=True):
+        m = self.evaluate(self.obs, self.prd)
+        l = np.average(self.loss)
+        if reset:
+            self.init_metrics()
+        print('loss %.2f | acc %.4f | prc %.4f | rcl %.4f | f1 %.4f' %(l, m[0], m[1], m[2], m[3]))
+
     def get_matrix(self, obs, prd):
-        if isinstance(obs, list): obs = np.array(obs)
-        if isinstance(prd, list): prd = np.array(prd)
-        prd = self.normalize(prd)
-        obs = obs.reshape(prd.shape[0], -1)
-        if prd.shape != obs.shape:
-            obs = self.normalize(obs)
+        obs = np.array(obs)
+        prd = np.array(prd)
+#        prd = self.normalize(prd)
+#        obs = np.reshape(obs, (prd.shape[0], -1))
+#        if np.shape(prd) != np.shape(obs):
+#            obs = self.normalize(obs)
         matrix = []
         for a, b in itertools.product(self.lbl, repeat=2):
             matrix.append(len(np.where((obs == a) & (prd == b))[0]))
         return np.array(matrix).reshape(self.s, self.s)
 
     def normalize(self, val):
-        if val.ndim == 1: val = val.reshape(-1, 1)
-        if val.shape[1] == 1:
-            val = np.argmax(np.c_[1 - val, val], axis=1)
-        else:
-            val = np.argmax(val, axis=1)
-        return val.reshape(-1, 1)
+        if np.ndim(val) == 1:
+            val = np.reshape(val, (-1, 1))
+        if np.shape(val)[1] == 1:
+            val = np.c_[1 - val, val]
+        val = np.argmax(val, axis=1)
+        return np.reshape(val, (-1, 1))
     
     def accuracy(self, obs, prd, mtr=None):
         if mtr is None: mtr = self.get_matrix(obs, prd)
@@ -95,12 +159,26 @@ class Accuracy(Confusion_matrix):
     def evaluate(self, obs, prd):
         return super().accuracy(obs, prd)
 
+    def get_metrics(self, reset=True):
+        m = self.evaluate(self.obs, self.prd)
+        l = np.average(self.loss)
+        if reset:
+            self.init_metrics()
+        print('loss %.2f | acc %.4f' %(l, m))
+
 class Precision(Confusion_matrix):
     def __init__(self, lbl=[0,1]):
         super().__init__(lbl)
 
     def evaluate(self, obs, prd):
         return super().precision(obs, prd)
+
+    def get_metrics(self, reset=True):
+        m = self.evaluate(self.obs, self.prd)
+        l = np.average(self.loss)
+        if reset:
+            self.init_metrics()
+        print('loss %.2f | prc %.4f' %(l, m))
 
 class Recall(Confusion_matrix):
     def __init__(self, lbl=[0,1]):
@@ -109,9 +187,23 @@ class Recall(Confusion_matrix):
     def evaluate(self, obs, prd):
         return super().recall(obs, prd)
 
+    def get_metrics(self, reset=True):
+        m = self.evaluate(self.obs, self.prd)
+        l = np.average(self.loss)
+        if reset:
+            self.init_metrics()
+        print('loss %.2f | rcl %.4f' %(l, m))
+
 class F1(Confusion_matrix):
     def __init__(self, lbl=[0,1]):
         super().__init__(lbl)
 
     def evaluate(self, obs, prd):
         return super().f1(obs, prd)
+
+    def get_metrics(self, reset=True):
+        m = self.evaluate(self.obs, self.prd)
+        l = np.average(self.loss)
+        if reset:
+            self.init_metrics()
+        print('loss %.2f | f1 %.4f' %(l, m))

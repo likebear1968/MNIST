@@ -20,7 +20,7 @@ class SigmoidWithLoss:
         self.t = t.reshape(-1, 1)
         self.y = self.sigmoid(x)
         self.loss = self.binary_cross_entropy_error(self.y, self.t)
-        return self.loss
+        return self.loss, np.argmax(np.c_[1 - self.y, self.y], axis=1)
 
     def backward(self, dout=1):
         return (self.y - self.t) * dout / self.t.shape[0]

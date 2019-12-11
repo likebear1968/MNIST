@@ -10,7 +10,7 @@ class Dropout:
         if train:
             self.mask = np.random.rand(*x.shape) > self.ratio
             return x * self.mask
-        self.mask = np.ones_like(*x.shape, dtype=bool)
+        self.mask = np.ones_like(x.shape, dtype=bool)
         return x * (1.0 - self.ratio)
 
     def backward(self, dout):

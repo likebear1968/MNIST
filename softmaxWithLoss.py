@@ -31,7 +31,7 @@ class SoftmaxWithLoss:
         self.y = self.softmax(x)
         if self.t.size == self.y.size:
             self.t = self.t.argmax(axis=1)
-        return self.cross_entropy_error(self.y, self.t)
+        return self.cross_entropy_error(self.y, self.t), np.argmax(self.y, axis=1)
 
     def backward(self, dout=1):
         size = self.t.shape[0]
